@@ -163,7 +163,16 @@ def main():
 
     try:
         import uvicorn
-        uvicorn.run("app.main:app", host=HOST, port=port, log_level="info")
+        # Windowed PyInstaller builds have no stdout/stderr. Uvicorn's default
+        # formatter calls stderr.isatty(), so use the file logging configured
+        # above instead of installing Uvicorn's console logging configuration.
+        uvicorn.run(
+            "app.main:app",
+            host=HOST,
+            port=port,
+            log_level="info",
+            log_config=None,
+        )
     except Exception as e:  # noqa: BLE001
         log.exception("服务启动失败")
         gui_message(APP_NAME, f"服务启动失败：{e}\n\n详见日志：{LOG_FILE}")
