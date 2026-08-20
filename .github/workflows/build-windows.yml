@@ -42,6 +42,13 @@ jobs:
       - name: Install Inno Setup
         run: choco install innosetup -y --no-progress
 
+      - name: Download Simplified Chinese language file
+        shell: pwsh
+        run: |
+          Invoke-WebRequest `
+            -Uri "https://raw.githubusercontent.com/kira-96/Inno-Setup-Chinese-Simplified-Translation/1ff90acc4ed4aee82b1cda43253243deee3daed4/ChineseSimplified.isl" `
+            -OutFile "packaging\ChineseSimplified.isl"
+
       - name: Build installer with Inno Setup
         shell: pwsh
         run: |
