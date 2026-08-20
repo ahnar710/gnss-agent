@@ -1,0 +1,66 @@
+# GNSS 文献调研 Agent — Windows 安装包自动构建
+#
+# 用法：
+#   1. 把项目推到 GitHub 仓库（任意公开/私有均可）
+#   2. 触发方式：
+#      - 手动：仓库页 Actions → "Build Windows Installer" → Run workflow
+#      - 发版：git tag v0.1.0 && git push origin v0.1.0
+#   3. 构建完成后，在 Actions 运行页的 Artifacts 下载：
+#      - gnss-agent-windows-installer.zip  → Inno Setup 安装器（分发给最终用户）
+#      - gnss-agent-windows-portable.zip   → 免安装绿色目录版
+#
+# 说明：PyInstaller 不支持交叉编译，Windows 安装包只能在 Windows runner 上构建。
+
+name: Build Windows Installer
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Build with PyInstaller
+        run: python -m PyInstaller packaging/gnss_agent.spec --noconfirm
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer with Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+          }
+          if (-not $iscc) { throw "ISCC.exe not found" }
+          & $iscc "packaging\installer.iss"
+          Get-ChildItem "dist_installer" | Select-Object Name, Length
+
+      - name: Upload installer (for end users)
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnss-agent-windows-installer
+          path: dist_installer/*.exe
+
+      - name: Upload portable bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnss-agent-windows-portable
+          path: dist/GNSS文献调研Agent

@@ -1,0 +1,27 @@
+在 Windows 上构建 GNSS 文献调研 Agent 安装包（约 10 分钟）
+==========================================================
+
+【第 1 步】安装两个软件（各约 2 分钟）
+  1) Python 3.10 或更高版本
+     下载：https://www.python.org/downloads/
+     安装时务必勾选：Add python.exe to PATH
+  2) Inno Setup 6
+     下载：https://jrsoftware.org/isinfo.php
+     安装时务必勾选：Add ISCC to PATH
+
+【第 2 步】把本压缩包解压到任意目录，例如 C:\passage
+
+【第 3 步】双击运行：C:\passage\packaging\build_windows.bat
+     （或者打开命令行执行：cd C:\passage 然后 packaging\build_windows.bat）
+
+【第 4 步】等待约 5 分钟，看到"构建完成"即可
+
+【产物】安装包在：C:\passage\dist_installer\
+    文件名类似：GNSS文献调研Agent_Setup_0.2.0.exe
+    把这个文件发给用户即可——用户双击安装，无需任何其他东西。
+
+【常见问题】
+  - Python 或 Inno Setup 官网打不开：刷新重试，或让同事帮忙下载安装包
+  - pip 下载慢/失败：脚本已自动切换清华镜像，耐心等待
+  - 杀毒软件提示：选择"允许"/加入白名单（未签名的开发版常见）
+  - 报错：把命令行窗口里的红色文字截图发给需求方即可

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GNSS 文献调研 Agent</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">🛰️</span>
+    <div>
+      <h1>GNSS 文献调研 Agent</h1>
+      <p class="sub">完全本地运行 · 自带 API Key · 不点停止不停工</p>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <span id="app-version" class="badge off">版本…</span>
+    <span id="llm-status" class="badge">模型未配置</span>
+    <button id="btn-settings" class="btn">⚙ 设置</button>
+    <button id="btn-new" class="btn primary">＋ 新建调研</button>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="sidebar">
+    <h2>调研任务 <span id="task-count" class="count"></span></h2>
+    <div id="task-list" class="task-list"></div>
+  </aside>
+  <section class="detail">
+    <div id="empty-hint" class="empty">
+      <p>👈 从左侧选择任务，或点击「新建调研」开始</p>
+      <p class="small">输入一句主题，Agent 将自动完成检索 → 深读 → 报告全流程</p>
+      <p class="small">💡 提示：创建任务后，在任务页点击「📄 上传论文(PDF)」可分析你自己的论文</p>
+    </div>
+    <div id="detail" class="hidden">
+      <div class="detail-head">
+        <h2 id="d-topic"></h2>
+        <span id="d-status" class="badge"></span>
+        <div class="counters">
+          <div class="counter"><b id="d-found">0</b><span>已检索</span></div>
+          <div class="counter"><b id="d-relevant">0</b><span>相关</span></div>
+          <div class="counter"><b id="d-read">0</b><span>已深读</span></div>
+          <div class="counter"><b id="d-target">0</b><span>目标</span></div>
+        </div>
+        <div class="progress"><div id="d-progress"></div></div>
+        <div class="detail-meta" id="d-meta"></div>
+        <div class="detail-actions">
+          <button id="btn-stop" class="btn danger">■ 停止调研</button>
+          <button id="btn-upload" class="btn">📄 上传论文(PDF)</button>
+          <input type="file" id="pdf-input" accept="application/pdf,.pdf" class="hidden">
+          <button id="btn-delete" class="btn danger-outline">🗑 删除任务</button>
+          <button id="btn-refresh" class="btn">↻ 刷新</button>
+        </div>
+      </div>
+      <nav class="tabs">
+        <button data-tab="papers" class="tab active">论文</button>
+        <button data-tab="logs" class="tab">运行日志</button>
+        <button data-tab="report" class="tab">调研报告</button>
+      </nav>
+      <div id="tab-papers" class="tabpane">
+        <div class="filters" id="paper-filters">
+          <button data-status="" class="chip active">全部</button>
+          <button data-status="pending" class="chip">待打分</button>
+          <button data-status="relevant" class="chip">相关</button>
+          <button data-status="read" class="chip">已深读</button>
+          <button data-status="scored" class="chip">已排除</button>
+        </div>
+        <div id="paper-list" class="paper-list"></div>
+      </div>
+      <div id="tab-logs" class="tabpane hidden">
+        <div id="log-list" class="log-list"></div>
+      </div>
+      <div id="tab-report" class="tabpane hidden">
+        <div class="report-actions">
+          <span id="report-meta" class="report-meta"></span>
+          <button id="btn-copy-report" class="btn">复制 Markdown</button>
+          <button id="btn-download-report" class="btn">下载 .md</button>
+        </div>
+        <div id="report-content" class="report-content"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- 新建任务 -->
+<div id="modal-new" class="modal hidden">
+  <div class="modal-box">
+    <h3>新建文献调研任务</h3>
+    <label for="t-topic">调研主题（一句话，中英文均可）</label>
+    <textarea id="t-topic" rows="3" placeholder="例如：城市峡谷环境下 RTK 接收机多路径抑制算法的研究进展"></textarea>
+    <div class="examples">
+      <span class="examples-label">示例：</span>
+      <div id="example-chips" class="chips"></div>
+    </div>
+    <label for="t-direction">补充说明（可选：背景 / 关注重点 / 排除项）</label>
+    <textarea id="t-direction" rows="2" placeholder="例如：重点关注 2020 年后的研究，排除纯算法理论推导"></textarea>
+    <div class="form-row">
+      <label>目标篇数 <input id="t-target" type="number" value="100" min="1"></label>
+      <label>时长上限(小时) <input id="t-hours" type="number" value="24" min="0.5" step="0.5"></label>
+      <label>回溯年数 <input id="t-years" type="number" value="10" min="1"></label>
+      <label>成本上限(USD，留空用全局) <input id="t-cost-cap" type="number" min="0" step="0.5" placeholder="全局"></label>
+    </div>
+    <p class="hint">💡 任务创建后，在任务页点「📄 上传论文(PDF)」也可直接分析你自己的论文。</p>
+    <div class="modal-actions">
+      <button id="btn-new-cancel" class="btn">取消</button>
+      <button id="btn-new-submit" class="btn primary">开始调研</button>
+    </div>
+  </div>
+</div>
+
+<!-- 设置 -->
+<div id="modal-settings" class="modal hidden">
+  <div class="modal-box wide">
+    <h3>设置 — 大模型 API</h3>
+    <p class="hint">所有配置仅保存在本机（SQLite），不上传任何服务器。支持所有 OpenAI 兼容接口：DeepSeek / OpenAI / 通义千问 / Ollama 等。</p>
+    <div class="form-row">
+      <label class="grow">API Base URL <input id="s-base" placeholder="https://api.deepseek.com/v1"></label>
+      <label class="grow">模型名 <input id="s-model" placeholder="deepseek-chat"></label>
+    </div>
+    <label>API Key <input id="s-key" type="password" placeholder="sk-...（仅存本机）"></label>
+    <div class="form-row">
+      <label>默认目标篇数 <input id="s-target" type="number" min="1"></label>
+      <label>默认时长(小时) <input id="s-hours" type="number" min="0.5" step="0.5"></label>
+      <label>回溯年数 <input id="s-years" type="number" min="1"></label>
+      <label>相关阈值 <input id="s-threshold" type="number" min="0" max="1" step="0.05"></label>
+    </div>
+    <div class="form-row">
+      <label>输入价格(USD/百万token) <input id="s-price-in" type="number" min="0" step="0.01"></label>
+      <label>输出价格(USD/百万token) <input id="s-price-out" type="number" min="0" step="0.01"></label>
+      <label>单任务成本上限(USD) <input id="s-cost-cap" type="number" min="0" step="0.5"></label>
+    </div>
+    <p class="hint">成本上限是安全保险丝：任务累计费用达到上限后自动结束并生成报告（0=不限）。单价仅用于估算显示，请按你的模型实际价格填写。</p>
+    <div class="form-row">
+      <label>深读员并行数 <input id="s-readers" type="number" min="1" max="6"></label>
+      <label>主编质控 <select id="s-qc"><option value="1">开启</option><option value="0">关闭</option></select></label>
+      <label class="grow">各角色模型（留空=全局模型）</label>
+    </div>
+    <div class="form-row">
+      <label>策略官 <input id="s-m-strategist" placeholder="全局"></label>
+      <label>评审员 <input id="s-m-reviewer" placeholder="全局"></label>
+      <label>深读员 <input id="s-m-reader" placeholder="全局"></label>
+      <label>分析师 <input id="s-m-analyst" placeholder="全局"></label>
+      <label>主编 <input id="s-m-editor" placeholder="全局"></label>
+    </div>
+    <label>启用文献源</label>
+    <div id="s-sources" class="chips"></div>
+    <div class="modal-actions">
+      <span id="s-test-result" class="test-result"></span>
+      <button id="btn-settings-test" class="btn">测试连接</button>
+      <button id="btn-settings-cancel" class="btn">取消</button>
+      <button id="btn-settings-save" class="btn primary">保存</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js?v=0.2.0"></script>
+</body>
+</html>
