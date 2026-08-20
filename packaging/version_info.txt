@@ -25,7 +25,7 @@ VSVersionInfo(
            StringStruct(u'ProductName', u'GNSS 文献调研 Agent'),
            StringStruct(u'ProductVersion', u'0.2.0.0')])
         ]
-      )
+      ),
     VarFileInfo([VarStruct(u'Translation', [0x0409, 1200])])
   ]
 )
